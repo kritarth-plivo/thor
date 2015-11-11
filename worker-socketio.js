@@ -133,7 +133,7 @@ process.on('message', function message(task) {
     }
 
     process_send({
-      type: 'close', id: task.id, concurrent: --concurrent,
+      type: 'close', id: task.id, concurrent: --concurrent, workerid: process.pid,
       read: internal.bytesRead || 0,
       send: internal.bytesWritten || 0
     }, task);
@@ -144,7 +144,7 @@ process.on('message', function message(task) {
   });
 
   socket.on('error', function error(err) {
-    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, concurrent: --concurrent }, task);
+    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, concurrent: --concurrent, workerid: process.pid }, task);
 
     socket.disconnect();
     socket.emit('disconnect');
@@ -153,7 +153,7 @@ process.on('message', function message(task) {
 
   // catch ECONNREFUSED
   socket.io.on('connect_error', function(err){
-    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, concurrent: --concurrent }, task);
+    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, concurrent: --concurrent, workerid: process.pid }, task);
 
     socket.disconnect();
     socket.emit('disconnect');
@@ -196,7 +196,7 @@ function write(socket, task, id, fn, data) {
       mask: masked
     }, function sending(err) {
       if (err) {
-        process_send({ type: 'error', message: err.message, concurrent: --concurrent, id: id }, task);
+        process_send({ type: 'error', message: err.message, concurrent: --concurrent, workerid: process.pid, id: id }, task);
 
         socket.disconnect();
         socket.emit('disconnect');
