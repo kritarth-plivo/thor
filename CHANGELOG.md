@@ -1,7 +1,3 @@
-### 1.0.1
+### 1.2.0
 
 Add socket.io support
-
-### 1.0.0
-
-Initial release of `thor`.

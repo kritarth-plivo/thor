@@ -1,180 +1,100 @@
-# Thor
+# WebSocket压测工具
 
-Thor is WebSocket benchmarking/load generator. There are a lot of benchmarking
-tools for HTTP servers. You've got ab, siege, wrk and more. But all these tools
-only work with plain ol HTTP and have no support for WebSockets - even if they did
-they wouldn't be suitable, as they would be testing short running HTTP requests
-instead of long running HTTP requests with a lot of messaging traffic. Thor
-fixes all of this.
+## 依赖
 
-### Dependencies
+### Node.js
 
-Thor requires Node.js to be installed on your system. If you don't have Node.js
-installed you can download it from http://nodejs.org or build it from the github
-source repository: http://github.com/joyent/node.
+下载地址 http://nodejs.org
+注意将安装目录下的bin目录加入环境变量中
 
-Once you have Node.js installed, you can use the bundled package manager `npm` to
-install this module:
+#### linux下nodejs环境变量
 
-```
-npm install -g git://github.com/iorichina/thor.git
-```
+$ touch .bashrc
+$ echo 'export PATH=/path/to/nodejs/bin:$PATH' >> .bashrc
+$ source .bashrc
 
-The `-g` command flag tells `npm` to install the module globally on your system.
+#### windows下nodejs环境变量
 
-### Usage
+windows安装版本会自动设置好环境变量
+
+## 使用方法
+
+### linux
 
 ```
-thor [options] <urls>
-socketio [options] <url>[@@vip] [<url>[@@vip]...]
+bin/socketio [options] <url>[@@vip] [<url>[@@vip]...]
 ```
-
-Thor can hit multiple URL's at once; this is useful if you are testing your
-reverse proxies, load balancers or just simply multiple applications. The url
-that you supply to `thor` should be written in a WebSocket compatible format
-using the `ws` or `wss` protocols:
+### windows
 
 ```
-thor --amount 5000 ws://localhost:8080 wss://localhost:8081
-```
-or use http/https if and only if ur using socket.io(nodejs/java/etc) in server
-```
-socketio --amount 5000 http://localhost:8080 https://localhost:8081
+node bin\socketio [options] <url>[@@vip] [<url>[@@vip]...]
 ```
 
-The snippet above will open up `5000` connections against the regular
-`ws://localhost:8080` and also `5000` connections against the *secured*
-`wss://localhost:8081` server, so a total of `10000` connections will be made.
+### Options
 
-One thing to keep in mind is you probably need to bump the amount of file
-descriptors on your local machine if you start testing WebSockets. Set the
-`ulimit -n` on machine as high as possible. If you do not know how to do this,
-Google it.
-
-And the other thing u have to know is that, one ip can only create max to 60 thousands connections,
-which is limited by TCP/IP protocal. U can special the [@@one_of_the_machine_vip] after the url.
-
-#### thor Options
-
+支持虚拟IP
 ```
-  Usage: thor [options] ws://localhost
+  Usage: socketio [options] urls
+
+         urls like
+         http://host/socket.io/?transport=websocket
+         http://host/socket.io/?transport=websocket@@192.168.102.53
 
   Options:
 
     -h, --help                      output usage information
-    -A, --amount <connections>      the amount of persistent connections to generate
-    -C, --concurrent <connections>  how many concurrent-connections per second
-    -M, --messages <messages>       number of messages to be send per connection
-    -P, --protocol <protocol>       WebSocket protocol version
-    -B, --buffer <size>             size of the messages that are send
-    -W, --workers <cpus>            workers to be spawned
-    -G, --generator <file>          custom message generators
-    -M, --masked                    send the messaged with a mask
-    -b, --binary                    send binary messages instead of utf-8
-    -T, --runtime <seconds>         timeout to close socket(seconds), default to unlimited and u must stop by ctrl+c
+    -A, --amount <connections>      创建连接数, default 10000
+    -W, --workers [cpus]            workers to be spawned, default cpus.length
+    --TP, --transport [transport]   "polling"/"websocket" default websocket
+    --PI, --pingInterval [seconds]  心跳间隔（秒）, default 50
+    --SI, --statInterval [seconds]  更新统计信息间隔（秒）, default 60
+    --RT, --runtime [seconds]       关闭连接前的超时时间（秒），默认不会超时，需要ctrl+c手动关闭
     -V, --version                   output the version number
 ```
-
-Some small notes about the options:
-
-- `--protocol` is the protocol version number. If you want to use the *HyBi drafts
-  07-12* use `8` as argument or if you want to use the *HyBi drafts 13-17*
-  drafts which are the default version use `13`.
-- `--buffer` should be size of the message in bytes.
-- `--workers` as Node.js is single threaded this sets the amount of sub
-  processes to handle all the heavy lifting.
-
-#### socketio Options
-
-```
-  Usage: socketio [options] http[s]://localhost[@@vip]
-
-  Options:
-
-    -h, --help                                  output usage information
-    -A, --amount <connections>                  the amount of persistent connections to generate
-    -C, --concurrent <connections>[deprecated]  how many concurrent-connections per second
-    -M, --messages <messages>                   number of messages to be send per connection
-    -P, --protocol <protocol>                   WebSocket protocol version
-    -B, --buffer <size>                         size of the messages that are send
-    -W, --workers <cpus>                        workers to be spawned
-    -M, --masked                                send the messaged with a mask
-    -b, --binary                                send binary messages instead of utf-8
-    -T, --runtime <seconds>                     timeout to close socket(seconds), default to unlimited and u must stop by ctrl+c
-    -V, --version                               output the version number
-```
-
-
-### Custom messages
-
-Some WebSocket servers have their own custom messaging protocol. In order to
-work with those servers we introduced a concept called `generators` a generator
-is a small JavaScript file that can output `utf8` and `binary` messages. It uses
-a really simple generator by default. 
-
-Checkout https://github.com/observing/thor/blob/master/generator.js for an
-example of a generator.
-
-```
-thor --amount 1000 --generator <file.js> ws://localhost:8080
-```
-
 ### Example
 
+保持5k链接5分钟，并发数5k
 ```
-thor --amount 1000 --messages 100 ws://localhost:8080
+node bin\socketio --amount 5000 --RT 300 "http://14.17.108.68:13092/"
 ```
 
-This will hit the WebSocket server that runs on localhost:8080 with 1000
-connections and sends 100 messages over each established connection. Once `thor`
-is done with smashing your connections it will generate a detailed report:
-
-```
-Thor:                                                  version: 1.0.0
+Thor:                                                  version: 1.2.0
 
 God of Thunder, son of Odin and smasher of WebSockets!
 
 Thou shall:
 - Spawn 4 workers.
-- Create all the concurrent/parallel connections.
-- Smash 1000 connections with the mighty Mjölnir.
+- Create all the concurrent connections.
+- Smash 5000 connections .
 
-The answers you seek shall be yours, once I claim what is mine.
+Connecting to http://14.17.108.68:13092/
 
-Connecting to ws://localhost:8080
+  ◜  Progress :: Created 0, Active 0, @2015-11-11 17:31:15 ==> 此处的统计刷新是statInterval的值，在程序结束之后，此处隐藏
 
-  Opened 100 connections
-  Opened 200 connections
-  Opened 300 connections
-  Opened 400 connections
-  Opened 500 connections
-  Opened 600 connections
-  Opened 700 connections
-  Opened 800 connections
-  Opened 900 connections
-  Opened 1000 connections
-
-
-Online               15000 milliseconds
-Time taken           31775 milliseconds
-Connected            1000
+Online               96728 milliseconds
+Time taken           96728 milliseconds
+Connected            2211
 Disconnected         0
-Failed               0
-Total transferred    120.46MB
-Total received       120.43MB
+Failed               2789
+Total transferred    658.86kB
+Total received       631.64kB
 
 Durations (ms):
 
                      min     mean     stddev  median max
-Handshaking          217     5036       4094    3902 14451
-Latency              0       215         104     205 701
+Handshaking          171     3354       1631    2915 7737
+Latency              NaN     NaN         NaN     NaN NaN
 
 Percentile (ms):
 
                       50%     66%     75%     80%     90%     95%     98%     98%    100%
-Handshaking          3902    6425    8273    9141    11409   12904   13382   13945   14451
-Latency              205     246     266     288     371     413     437     443     701
-```
+Handshaking          2915    3627    4705    4827    5811    6412    7686    7712    7737
+Latency              NaN     NaN     NaN     NaN     NaN     NaN     NaN     NaN     NaN
+
+Received errors:
+
+2789x                undefined
+
 
 ### License
 

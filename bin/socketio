@@ -25,7 +25,7 @@ cli.usage(['[options] urls',
    .option('-G, --generator [file]', 'custom message generators')
    .option('-M, --masked', 'send the messaged with a mask')
    .option('-b, --binary', 'send binary messages instead of utf-8')
-   .option('--TP, --transport [transport]', '"polling"/"websocket" must be specified', 'websocket')
+   .option('--TP, --transport [transport]', '"polling"/"websocket" default websocket', 'websocket')
    .option('--PI, --pingInterval [seconds]', 'seconds for doing ping to keep-alive, default 50', parseInt, 50)
    .option('--SI, --statInterval [seconds]', 'show stat info interval, default 60', parseInt, 60)
    .option('--RT, --runtime [seconds]', 'timeout to close socket(seconds), default to unlimited, u must stop by ctrl+c', parseInt, -1)
@@ -85,7 +85,7 @@ Object.keys(cluster.workers).forEach(function each(id) {
   }
   for (var i = 0; i < datas.length; i++) {
     var data = datas[i];
-    if ('concurrent' in data) concurrents[data.id] = data.concurrent;
+    if ('concurrent' in data) concurrents[data.workerid] = data.concurrent;
 
     switch (data.type) {
       case 'open':
@@ -184,10 +184,8 @@ live.stop = function stop() {
   , ''
   , 'Thou shall:'
   , '- Spawn '+ forked_workers +' workers.'
-  , '- Create '+ (cli.concurrent || 'all the') + ' concurrent/parallel connections.'
-  , '- Smash '+ (cli.amount || 'infinite') +' connections with the mighty Mjölnir.'
-  , ''
-  , 'The answers you seek shall be yours, once I claim what is mine.'
+  , '- Create '+ (cli.concurrent || 'all the') + ' concurrent connections.'
+  , '- Smash '+ (cli.amount || 'infinite') +' connections.'
   , ''
 ].forEach(function stdout(line) {
   console.log(line);

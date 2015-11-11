@@ -1,6 +1,6 @@
 {
   "name": "thor",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Thor is WebSocket benchmark utility",
   "main": "index.js",
   "scripts": {
@@ -8,12 +8,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/iorichina/thor.git"
+    "url": "https://github.com/iorichina/thor/tree/push_client"
   },
   "keywords": [
     "WebSocket",
     "benchmark",
-    "load"
+    "loadtest"
   ],
   "author": "Arnout Kazemier <opensource@observe.it>",
   "license": "MIT",
@@ -30,6 +30,6 @@
   },
   "bin": {
     "thor": "./bin/thor",
-    "thor-socketio": "./bin/socketio"
+    "socketio": "./bin/socketio"
   }
 }
