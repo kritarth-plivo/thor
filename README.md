@@ -57,7 +57,7 @@ node bin\socketio [options] <url>[@@vip] [<url>[@@vip]...]
 ```
 node bin\socketio --amount 5000 --RT 300 "http://14.17.108.68:13092/"
 ```
-
+```
 Thor:                                                  version: 1.2.0
 
 God of Thunder, son of Odin and smasher of WebSockets!
@@ -94,7 +94,7 @@ Latency              NaN     NaN     NaN     NaN     NaN     NaN     NaN     NaN
 Received errors:
 
 2789x                undefined
-
+```
 
 ### License
 
