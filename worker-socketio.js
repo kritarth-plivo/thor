@@ -159,7 +159,7 @@ process.on('message', function message(task) {
   });
 
   socket.on('error', function error(err) {
-    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, concurrent: --concurrent, workerid: process.pid }, task);
+    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, workerid: process.pid }, task);
 
     socket.disconnect();
     socket.emit('disconnect');
@@ -168,7 +168,7 @@ process.on('message', function message(task) {
 
   // catch ECONNREFUSED
   socket.io.on('connect_error', function(err){
-    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, concurrent: --concurrent, workerid: process.pid }, task);
+    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, workerid: process.pid }, task);
 
     socket.disconnect();
     socket.emit('disconnect');
