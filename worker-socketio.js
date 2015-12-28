@@ -122,6 +122,21 @@ process.on('message', function message(task) {
       socket.emit('disconnect');
     }
   });
+  socket.on('onData', function onData(data) {
+    process_send({
+      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, workerid: process.pid,
+      id: task.id
+    }, task);
+
+    // Only write as long as we are allowed to send messages
+    if (task.messages > 0)
+    if (--task.messages) {
+      write(socket, task, task.id);
+    } else {
+      socket.disconnect();
+      socket.emit('disconnect');
+    }
+  });
 
   socket.on('disconnect', function close() {
     var internal = {};
