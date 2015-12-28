@@ -51,6 +51,7 @@ var cluster = require('cluster')
   , ids = Object.create(null)
   , concurrents = Object.create(null)
   , connections = 0
+  , close_connections = 0
   , error_connections = 0
   , received = 0
   , robin = []
@@ -101,6 +102,7 @@ Object.keys(cluster.workers).forEach(function each(id) {
         delete ids[data.id];
 
         metrics.close(data);
+        ++close_connections;
         break;
 
       case 'error':
@@ -144,7 +146,8 @@ function live() {
 
     process.stdout.write('\r'+ frames[i++ % len] +' Progress :: '.white + [
       'Created '.white + connections.toString().green,
-      'Active '.white + active.toString().green,
+      // 'Active '.white + active.toString().green,
+      'Active '.white + (connections - close_connections).toString().green,
       'Error '.white + error_connections.toString().green,
       'Received '.white + received.toString().green,
       '@'.white + new Date().toLocaleString().green
