@@ -14,8 +14,9 @@ var cli = require('commander');
 
 cli.usage(['[options] urls',
     ,'         urls like'
-    ,'         http://host/socket.io/?transport=websocket'
-    ,'         http://host/socket.io/?transport=websocket@@192.168.102.53'].join("\n"))
+    ,'         http://localhost:8080/'
+    ,'         http://localhost:8080/?params'
+    ,'         http://localhost:8080/?params@@192.168.102.53'].join("\n"))
    .option('-A, --amount <connections>', 'the amount of persistent connections to generate, default 10000', parseInt, 10000)
    .option('-C, --concurrent [connections]', '[deprecated]how many concurrent-connections per second, default 0', parseInt, 0)
    .option('-M, --messages [messages]', 'number of messages to be send per connection, default 0', parseInt, 0)
@@ -160,7 +161,6 @@ function live() {
     console.log('\r'+ frames[i++ % len] +' Progress :: '.white + [
       'Created '.white + connections.toString().green,
       'Active '.white + active.toString().green,
-      // 'Active '.white + (connections - close_connections + error_connections).toString().green,
       'Error '.white + error_connections.toString().green,
       'Received '.white + received.toString().green,
       '@'.white + new Date().toLocaleString().green
@@ -242,7 +242,7 @@ async.forEach(cli.args, function forEach(url, done) {
     // Process the connections
     worker.send({ url: url, size: cli.buffer, messages: cli.messages, id: id
       , localaddr: localaddr
-      , transport: [cli.transport]
+      , transport: cli.transport.split(',')
       , pingInterval: cli.pingInterval
       , nextTask: goOnTaskQueueWhenConcurrentLimited
       , runtime: cli.runtime

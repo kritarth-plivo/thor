@@ -74,6 +74,7 @@ process.on('message', function message(task) {
 
   // End of the line, we are gonna start generating new connections.
   if (!task.url) return;
+
   var socket = new Socket(task.url, {
     'force new connection': true,
     reconnection: false,
@@ -94,46 +95,7 @@ process.on('message', function message(task) {
     // we need to do some hacky shit in order to tack the bytes send.
   });
 
-  /**
-   * on.message
-   */
-  socket.on('message', function message(data) {
-    process_send({
-      type: 'message', latency: Date.now() - socket.last,
-      id: task.id, wid: process.pid
-    }, task);
-
-    // Only write as long as we are allowed to send messages
-    if (task.messages > 0)
-    if (--task.messages) {
-      write(socket, task, task.id);
-    } else {
-      socket.disconnect();
-      socket.emit('disconnect');
-    }
-  });
-  /**
-   * on.message
-   */
-  socket.on('onMessage', function onMessage(data) {
-    process_send({
-      type: 'message', latency: Date.now() - socket.last,
-      id: task.id, wid: process.pid
-    }, task);
-
-    // Only write as long as we are allowed to send messages
-    if (task.messages > 0)
-    if (--task.messages) {
-      write(socket, task, task.id);
-    } else {
-      socket.disconnect();
-      socket.emit('disconnect');
-    }
-  });
-  /**
-   * on.message
-   */
-  socket.on('onData', function onData(data) {
+  socket.on(process.env.NODE_ON_MESSAGE?process.env.NODE_ON_MESSAGE:'message', function message(data) {
     process_send({
       type: 'message', latency: Date.now() - socket.last,
       id: task.id, wid: process.pid
@@ -149,17 +111,15 @@ process.on('message', function message(task) {
     }
   });
 
-  /**
-   * 注意没有连上也会执行一次disconnect
-   */
-  socket.on('disconnect', function close(msg, err) {
-    if (msg=='error' && err && logError) {
+  socket.on('disconnect', function close(msg) {
+    var err = msg=='error' && arguments.length > 2 ? Array.prototype.slice.call(arguments, 1, 2).pop() : null;
+    if (err && logError) {
       console.error(err);
-    };
+    }
+
     var internal = {};
     try{
-      internal = socket.io.engine.transport.ws._socket;
-      internal = internal || {};
+      internal = socket.io.engine.transport.ws._socket || {};
     }catch(e){
       // console.log(socket.io.engine.transport.pollXhr);
     }
@@ -181,6 +141,7 @@ process.on('message', function message(task) {
     socket.disconnect('error', err);
     socket.emit('disconnect', 'error', err);
     delete connections[task.id];
+    checkConnectionLength();
   });
 
   // catch ECONNREFUSED
@@ -190,6 +151,7 @@ process.on('message', function message(task) {
     socket.disconnect('error', err);
     socket.emit('disconnect', 'error', err);
     delete connections[task.id];
+    checkConnectionLength();
   });
 
   // Adding a new socket to our socket collection.
