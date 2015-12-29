@@ -76,7 +76,7 @@ process.on('message', function message(task) {
   var socket = new Socket(task.url, {
     'force new connection': true,
     reconnection: false,
-    timeout: 5000,
+    timeout: task.connect_timeout * 1000,
     transports: [task.transport],
     protocolVersion: protocol,
     localAddress: task.localaddr || null

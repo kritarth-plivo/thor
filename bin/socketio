@@ -25,6 +25,7 @@ cli.usage(['[options] urls',
    .option('-G, --generator [file]', 'custom message generators')
    .option('-M, --masked', 'send the messaged with a mask')
    .option('-b, --binary', 'send binary messages instead of utf-8')
+   .option('-t, --connect_timeout [connect_timeout]', 'default 5(s)', parseInt, 5)
    .option('--TP, --transport [transport]', '"polling"/"websocket" default websocket', 'websocket')
    .option('--PI, --pingInterval [seconds]', 'seconds for doing ping to keep-alive, default 50', parseInt, 50)
    .option('--SI, --statInterval [seconds]', 'show stat info interval, default 60', parseInt, 60)
@@ -145,7 +146,7 @@ function live() {
     }, 0);
 
     // process.stdout.write('\r'+ frames[i++ % len] +' Progress :: '.white + [
-    console.log("\n" + '\r'+ frames[i++ % len] +' Progress :: '.white + [
+    console.log('\r'+ frames[i++ % len] +' Progress :: '.white + [
       'Created '.white + connections.toString().green,
       // 'Active '.white + active.toString().green,
       'Active '.white + (connections - close_connections + error_connections).toString().green,
@@ -234,6 +235,7 @@ async.forEach(cli.args, function forEach(url, done) {
       , pingInterval: cli.pingInterval
       , nextTask: goOnTaskQueueWhenConcurrentLimited
       , runtime: cli.runtime
+      , connect_timeout: cli.connect_timeout
     });
 
     // do it if cuncurrent is not 0 and smaller than the amount of all tcp connections
