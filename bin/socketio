@@ -144,10 +144,11 @@ function live() {
       return count + (concurrents[id] || 0);
     }, 0);
 
-    process.stdout.write('\r'+ frames[i++ % len] +' Progress :: '.white + [
+    // process.stdout.write('\r'+ frames[i++ % len] +' Progress :: '.white + [
+    console.log("\n" + '\r'+ frames[i++ % len] +' Progress :: '.white + [
       'Created '.white + connections.toString().green,
       // 'Active '.white + active.toString().green,
-      'Active '.white + (connections - close_connections).toString().green,
+      'Active '.white + (connections - close_connections + error_connections).toString().green,
       'Error '.white + error_connections.toString().green,
       'Received '.white + received.toString().green,
       '@'.white + new Date().toLocaleString().green
@@ -176,7 +177,8 @@ live.frames = [
  * @api private
  */
 live.stop = function stop() {
-  process.stdout.write('\u001b[2K');
+  // process.stdout.write('\u001b[2K');
+  console.log('');
   clearInterval(live.interval);
 };
 
@@ -256,7 +258,8 @@ async.forEach(cli.args, function forEach(url, done) {
 // We are setup, everything is running
 //
 console.log('');
-live();
+// live();
+setTimeout(live, 1000);
 
 process.once('SIGINT', function end() {
   robin.forEach(function nuke(worker) {
