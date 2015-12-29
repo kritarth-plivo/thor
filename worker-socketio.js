@@ -79,13 +79,14 @@ process.on('message', function message(task) {
     timeout: task.connect_timeout * 1000,
     transports: task.transport,
     protocolVersion: protocol,
-    localAddress: task.localaddr || null
+    localAddress: task.localaddr || null,
+    headers: {user-agent: 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.93 Safari/537.36'}
   });
   socket.last = Date.now();
   var pingInterval = null;
 
   socket.on('connect', function open() {
-    process_send({ type: 'open', duration: Date.now() - start_timestamp, id: task.id, concurrent: concurrent, cur_time: Date.now(), workerid: process.pid }, task);
+    process_send({ type: 'open', duration: Date.now() - start_timestamp, id: task.id, concurrent: concurrent, cur_time: Date.now(), wid: process.pid }, task);
     // write(socket, task, task.id);
 
     // As the `close` event is fired after the internal `_socket` is cleaned up
@@ -97,8 +98,8 @@ process.on('message', function message(task) {
    */
   socket.on('message', function message(data) {
     process_send({
-      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, cur_time: Date.now(), workerid: process.pid,
-      id: task.id
+      type: 'message', latency: Date.now() - socket.last,
+      id: task.id, wid: process.pid
     }, task);
 
     // Only write as long as we are allowed to send messages
@@ -115,8 +116,8 @@ process.on('message', function message(task) {
    */
   socket.on('onMessage', function onMessage(data) {
     process_send({
-      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, cur_time: Date.now(), workerid: process.pid,
-      id: task.id
+      type: 'message', latency: Date.now() - socket.last,
+      id: task.id, wid: process.pid
     }, task);
 
     // Only write as long as we are allowed to send messages
@@ -133,8 +134,8 @@ process.on('message', function message(task) {
    */
   socket.on('onData', function onData(data) {
     process_send({
-      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, cur_time: Date.now(), workerid: process.pid,
-      id: task.id
+      type: 'message', latency: Date.now() - socket.last,
+      id: task.id, wid: process.pid
     }, task);
 
     // Only write as long as we are allowed to send messages
@@ -160,7 +161,7 @@ process.on('message', function message(task) {
     }
 
     process_send({
-      type: 'close', id: task.id, concurrent: --concurrent, cur_time: Date.now(), workerid: process.pid,
+      type: 'close', id: task.id, wid: process.pid, concurrent: --concurrent, cur_time: Date.now(),
       read: internal.bytesRead || 0,
       send: internal.bytesWritten || 0
     }, task);
@@ -171,7 +172,7 @@ process.on('message', function message(task) {
   });
 
   socket.on('error', function error(err) {
-    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, workerid: process.pid }, task);
+    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, wid: process.pid }, task);
 
     socket.disconnect(err);
     socket.emit('disconnect', err);
@@ -180,7 +181,7 @@ process.on('message', function message(task) {
 
   // catch ECONNREFUSED
   socket.io.on('connect_error', function connect_error(err){
-    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, workerid: process.pid }, task);
+    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, wid: process.pid }, task);
 
     socket.disconnect(err);
     socket.emit('disconnect', err);
@@ -223,7 +224,7 @@ function write(socket, task, id, fn, data) {
       mask: masked
     }, function sending(err) {
       if (err) {
-        process_send({ type: 'error', message: err.message, workerid: process.pid, id: id }, task);
+        process_send({ type: 'error', message: err.message, id: task.id, wid: process.pid }, task);
 
         socket.disconnect(err);
         socket.emit('disconnect', err);

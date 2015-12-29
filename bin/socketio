@@ -78,7 +78,11 @@ while (workers--) cluster.fork();
 
 Object.keys(cluster.workers).forEach(function each(id) {
   var worker = cluster.workers[id];
-
+  /**
+   * message from worker via IPC
+   * @param  {Array|Object}  data) Array of Object or Object{id:connection_id, wid:worker_id, ...}
+   * @return null
+   */
   worker.on('message', function message(data) {
   
   var datas = [];
@@ -90,8 +94,8 @@ Object.keys(cluster.workers).forEach(function each(id) {
   for (var i = 0; i < datas.length; i++) {
     var data = datas[i];
     if ('concurrent' in data && 'cur_time' in data) {
-      if (!concurrent_timestamps[data.workerid] || concurrent_timestamps[data.workerid] < data.cur_time) {
-        concurrents[data.workerid] = data.concurrent;
+      if (!concurrent_timestamps[data.wid] || concurrent_timestamps[data.wid] < data.cur_time) {
+        concurrents[data.wid] = data.concurrent;
       }
     }
 
