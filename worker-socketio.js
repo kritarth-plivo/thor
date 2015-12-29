@@ -80,7 +80,7 @@ process.on('message', function message(task) {
     transports: task.transport,
     protocolVersion: protocol,
     localAddress: task.localaddr || null,
-    headers: {user-agent: 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.93 Safari/537.36'}
+    headers: {'user-agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.93 Safari/537.36'}
   });
   socket.last = Date.now();
   var pingInterval = null;
