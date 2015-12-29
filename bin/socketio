@@ -51,6 +51,7 @@ var cluster = require('cluster')
   , workers = cli.workers || 1
   , ids = Object.create(null)
   , concurrents = Object.create(null)
+  , concurrent_timestamps = Object.create(null)
   , connections = 0
   , close_connections = 0
   , error_connections = 0
@@ -88,7 +89,11 @@ Object.keys(cluster.workers).forEach(function each(id) {
   }
   for (var i = 0; i < datas.length; i++) {
     var data = datas[i];
-    if ('concurrent' in data) concurrents[data.workerid] = data.concurrent;
+    if ('concurrent' in data && 'cur_time' in data) {
+      if (!concurrent_timestamps[data.workerid] || concurrent_timestamps[data.workerid] < data.cur_time) {
+        concurrents[data.workerid] = data.concurrent;
+      }
+    }
 
     switch (data.type) {
       case 'open':
@@ -148,8 +153,8 @@ function live() {
     // process.stdout.write('\r'+ frames[i++ % len] +' Progress :: '.white + [
     console.log('\r'+ frames[i++ % len] +' Progress :: '.white + [
       'Created '.white + connections.toString().green,
-      // 'Active '.white + active.toString().green,
-      'Active '.white + (connections - close_connections + error_connections).toString().green,
+      'Active '.white + active.toString().green,
+      // 'Active '.white + (connections - close_connections + error_connections).toString().green,
       'Error '.white + error_connections.toString().green,
       'Received '.white + received.toString().green,
       '@'.white + new Date().toLocaleString().green
@@ -231,7 +236,7 @@ async.forEach(cli.args, function forEach(url, done) {
     // Process the connections
     worker.send({ url: url, size: cli.buffer, messages: cli.messages, id: id
       , localaddr: localaddr
-      , transport: cli.transport
+      , transport: [cli.transport]
       , pingInterval: cli.pingInterval
       , nextTask: goOnTaskQueueWhenConcurrentLimited
       , runtime: cli.runtime

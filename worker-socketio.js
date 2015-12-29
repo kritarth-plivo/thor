@@ -51,7 +51,7 @@ var metrics_datas = {collection:true, datas:[]}
     }, statInterval * 1000);
 
 process.on('message', function message(task) {
-  var now = Date.now();
+  var start_timestamp = Date.now();
 
   //
   // Write a new message to the socket. The message should have a size of x
@@ -77,7 +77,7 @@ process.on('message', function message(task) {
     'force new connection': true,
     reconnection: false,
     timeout: task.connect_timeout * 1000,
-    transports: [task.transport],
+    transports: task.transport,
     protocolVersion: protocol,
     localAddress: task.localaddr || null
   });
@@ -85,16 +85,19 @@ process.on('message', function message(task) {
   var pingInterval = null;
 
   socket.on('connect', function open() {
-    process_send({ type: 'open', duration: Date.now() - now, id: task.id, concurrent: concurrent, workerid: process.pid }, task);
+    process_send({ type: 'open', duration: Date.now() - start_timestamp, id: task.id, concurrent: concurrent, cur_time: Date.now(), workerid: process.pid }, task);
     // write(socket, task, task.id);
 
     // As the `close` event is fired after the internal `_socket` is cleaned up
     // we need to do some hacky shit in order to tack the bytes send.
   });
 
+  /**
+   * on.message
+   */
   socket.on('message', function message(data) {
     process_send({
-      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, workerid: process.pid,
+      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, cur_time: Date.now(), workerid: process.pid,
       id: task.id
     }, task);
 
@@ -107,9 +110,12 @@ process.on('message', function message(task) {
       socket.emit('disconnect');
     }
   });
+  /**
+   * on.message
+   */
   socket.on('onMessage', function onMessage(data) {
     process_send({
-      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, workerid: process.pid,
+      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, cur_time: Date.now(), workerid: process.pid,
       id: task.id
     }, task);
 
@@ -122,9 +128,12 @@ process.on('message', function message(task) {
       socket.emit('disconnect');
     }
   });
+  /**
+   * on.message
+   */
   socket.on('onData', function onData(data) {
     process_send({
-      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, workerid: process.pid,
+      type: 'message', latency: Date.now() - socket.last, concurrent: concurrent, cur_time: Date.now(), workerid: process.pid,
       id: task.id
     }, task);
 
@@ -138,7 +147,10 @@ process.on('message', function message(task) {
     }
   });
 
-  socket.on('disconnect', function close() {
+  /**
+   * 注意没有连上也会执行一次disconnect
+   */
+  socket.on('disconnect', function close(err) {
     var internal = {};
     try{
       internal = socket.io.engine.transport.ws._socket;
@@ -148,7 +160,7 @@ process.on('message', function message(task) {
     }
 
     process_send({
-      type: 'close', id: task.id, concurrent: --concurrent, workerid: process.pid,
+      type: 'close', id: task.id, concurrent: --concurrent, cur_time: Date.now(), workerid: process.pid,
       read: internal.bytesRead || 0,
       send: internal.bytesWritten || 0
     }, task);
@@ -161,17 +173,17 @@ process.on('message', function message(task) {
   socket.on('error', function error(err) {
     process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, workerid: process.pid }, task);
 
-    socket.disconnect();
-    socket.emit('disconnect');
+    socket.disconnect(err);
+    socket.emit('disconnect', err);
     delete connections[task.id];
   });
 
   // catch ECONNREFUSED
-  socket.io.on('connect_error', function(err){
+  socket.io.on('connect_error', function connect_error(err){
     process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, workerid: process.pid }, task);
 
-    socket.disconnect();
-    socket.emit('disconnect');
+    socket.disconnect(err);
+    socket.emit('disconnect', err);
     delete connections[task.id];
   });
 
@@ -211,10 +223,10 @@ function write(socket, task, id, fn, data) {
       mask: masked
     }, function sending(err) {
       if (err) {
-        process_send({ type: 'error', message: err.message, concurrent: --concurrent, workerid: process.pid, id: id }, task);
+        process_send({ type: 'error', message: err.message, workerid: process.pid, id: id }, task);
 
-        socket.disconnect();
-        socket.emit('disconnect');
+        socket.disconnect(err);
+        socket.emit('disconnect', err);
         delete connections[id];
       }
 
