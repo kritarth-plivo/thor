@@ -29,7 +29,6 @@
     "sugar": "1.3.8"
   },
   "bin": {
-    "thor": "./bin/thor",
     "socketio": "./bin/socketio"
   }
 }

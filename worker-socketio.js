@@ -152,8 +152,8 @@ process.on('message', function message(task) {
   /**
    * 注意没有连上也会执行一次disconnect
    */
-  socket.on('disconnect', function close(err) {
-    if (err && logError) {
+  socket.on('disconnect', function close(msg, err) {
+    if (msg=='error' && err && logError) {
       console.error(err);
     };
     var internal = {};
@@ -178,8 +178,8 @@ process.on('message', function message(task) {
   socket.on('error', function error(err) {
     process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
-    socket.disconnect(err);
-    socket.emit('disconnect', err);
+    socket.disconnect('error', err);
+    socket.emit('disconnect', 'error', err);
     delete connections[task.id];
   });
 
@@ -187,8 +187,8 @@ process.on('message', function message(task) {
   socket.io.on('connect_error', function connect_error(err){
     process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
-    socket.disconnect(err);
-    socket.emit('disconnect', err);
+    socket.disconnect('error', err);
+    socket.emit('disconnect', 'error', err);
     delete connections[task.id];
   });
 
@@ -230,8 +230,8 @@ function write(socket, task, id, fn, data) {
       if (err) {
         process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
-        socket.disconnect(err);
-        socket.emit('disconnect', err);
+        socket.disconnect('error', err);
+        socket.emit('disconnect', 'error', err);
         delete connections[id];
       }
 
