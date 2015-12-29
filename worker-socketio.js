@@ -19,6 +19,7 @@ var masked = process.argv[4] === 'true'
 // collect metics datas
 var metrics_datas = {collection:true, datas:[]}
   , statInterval = +process.argv[6] || 60
+  , logError = +process.argv[7] || 0
   , process_send = function(data, task) {
       if (statInterval <= 0 || ('open' == data.type && task.nextTask)) {
         process.send(data);
@@ -76,7 +77,7 @@ process.on('message', function message(task) {
   var socket = new Socket(task.url, {
     'force new connection': true,
     reconnection: false,
-    timeout: task.connect_timeout * 1000,
+    timeout: task.connectTimeout * 1000,
     transports: task.transport,
     protocolVersion: protocol,
     localAddress: task.localaddr || null,
@@ -152,6 +153,9 @@ process.on('message', function message(task) {
    * 注意没有连上也会执行一次disconnect
    */
   socket.on('disconnect', function close(err) {
+    if (err && logError) {
+      console.error(err);
+    };
     var internal = {};
     try{
       internal = socket.io.engine.transport.ws._socket;
@@ -172,7 +176,7 @@ process.on('message', function message(task) {
   });
 
   socket.on('error', function error(err) {
-    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, wid: process.pid }, task);
+    process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
     socket.disconnect(err);
     socket.emit('disconnect', err);
@@ -181,7 +185,7 @@ process.on('message', function message(task) {
 
   // catch ECONNREFUSED
   socket.io.on('connect_error', function connect_error(err){
-    process_send({ type: 'error', message: err.description ? err.description.message : err.message, id: task.id, wid: process.pid }, task);
+    process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
     socket.disconnect(err);
     socket.emit('disconnect', err);
@@ -224,7 +228,7 @@ function write(socket, task, id, fn, data) {
       mask: masked
     }, function sending(err) {
       if (err) {
-        process_send({ type: 'error', message: err.message, id: task.id, wid: process.pid }, task);
+        process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
         socket.disconnect(err);
         socket.emit('disconnect', err);
