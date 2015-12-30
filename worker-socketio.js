@@ -17,37 +17,69 @@ var masked = process.argv[4] === 'true'
   , protocol = +process.argv[3] || 13;
 
 // collect metics datas
-var metrics_datas = {collection:true, datas:[]}
+var metrics_datas = {collection:true, datas:[], tmpdatas:[]}
   , statInterval = +process.argv[6] || 60
   , logError = +process.argv[7] || 0
+  , process_sending = false
   , process_send = function(data, task) {
+      // immediate statistic or run callback on open
       if (statInterval <= 0 || ('open' == data.type && task.nextTask)) {
-        process.send(data);
+        // lower ipc counter
+        if(!process_sending){
+          process_sending = true;
+
+          process.send(data, null, function sended(err){
+            if (err) {
+              process_sending = false;
+              return;
+            }
+
+            process_sending = false;
+          });
+        }
       }else{
-        metrics_datas.datas.push(data);
+        // datas should be push into temporary array while worker sending data to master
+        if (process_sending) {
+          metrics_datas.tmpdatas.push(data);
+        }else{
+          metrics_datas.datas.push(data);
+        }
       }
     }
   , process_sendAll = function(end) {
       if (metrics_datas.datas.length <= 0) {
         return;
-      };
-      // send all data to parent
-      process.send(metrics_datas, null, function clearDatas(err){
-        // invoked after the message is sent but before the target may have received it
-        if (err) {return;}
-        // WARNING: maybe we should use synchronize method here
-        metrics_datas.datas = [];
-        if (end) {
-          process.exit();
-        };
-      });
+      }
+      // lower ipc counter
+      if(!process_sending){
+        metrics_datas.datas = metrics_datas.datas.contact(metrics_datas.tmpdatas);
+        metrics_datas.tmpdatas = [];
+        process_sending = true;
+
+        // send all data to parent
+        process.send(metrics_datas, null, function clearDatas(err){
+          // invoked after the message is sent but before the target may have received it
+          if (err) {
+            process_sending = false;
+            return;
+          }
+
+          metrics_datas.datas = [];
+          process_sending = false;
+
+          // WARNING: maybe we should use synchronize method here
+          if (end) {
+            process.exit();
+          };
+        });
+      }
     }
   , checkConnectionLength = function(){
       if (Object.keys(connections).length <= 0) {
         process_sendAll(true);
       }
     }
-  , workerStatInterval = setInterval(function () {
+  , workerStatInterval = statInterval <= 0 ? null : setInterval(function () {
       process_sendAll();
     }, statInterval * 1000);
 
@@ -130,7 +162,7 @@ process.on('message', function message(task) {
       send: internal.bytesWritten || 0
     }, task);
 
-    delete connections[task.id];
+    connections[task.id] && delete connections[task.id];
     clearInterval(pingInterval);
     checkConnectionLength();
   });
