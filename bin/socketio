@@ -224,7 +224,7 @@ async.forEach(cli.args, function forEach(url, done) {
     , completed = 0
     , goOnTaskQueueWhenConcurrentLimited = (cli.concurrent && cli.concurrent < cli.amount);
 
-  console.log('Connecting to %s', url);
+  console.log('Connecting to %s @%s', url, new Date().toLocaleString());
 
   url = url.split('@@');
   var localaddr = url.length > 1 ? url[1] : null;

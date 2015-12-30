@@ -107,7 +107,7 @@ process.on('message', function message(task) {
       write(socket, task, task.id);
     } else {
       socket.disconnect();
-      socket.emit('disconnect');
+      // socket.emit('disconnect');
     }
   });
 
@@ -139,7 +139,7 @@ process.on('message', function message(task) {
     process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
     socket.disconnect('error', err);
-    socket.emit('disconnect', 'error', err);
+    // socket.emit('disconnect', 'error', err);
     delete connections[task.id];
     checkConnectionLength();
   });
@@ -149,7 +149,7 @@ process.on('message', function message(task) {
     process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
     socket.disconnect('error', err);
-    socket.emit('disconnect', 'error', err);
+    // socket.emit('disconnect', 'error', err);
     delete connections[task.id];
     checkConnectionLength();
   });
@@ -162,7 +162,7 @@ process.on('message', function message(task) {
   if (task.runtime && task.runtime > 0) {
     setTimeout(function timeoutToCloseSocket(id, socket) {
       socket.disconnect();
-      socket.emit('disconnect');
+      // socket.emit('disconnect');
     }, task.runtime * 1000, task.id, socket);
   }
 });
@@ -193,7 +193,7 @@ function write(socket, task, id, fn, data) {
         process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
         socket.disconnect('error', err);
-        socket.emit('disconnect', 'error', err);
+        // socket.emit('disconnect', 'error', err);
         delete connections[id];
       }
 
