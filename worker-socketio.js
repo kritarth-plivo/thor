@@ -52,7 +52,7 @@ var metrics_datas = {collection:true, datas:[], tmpdatas:[]}
       }
       // lower ipc counter
       if(!process_sending){
-        metrics_datas.datas = metrics_datas.datas.contact(metrics_datas.tmpdatas);
+        metrics_datas.datas = metrics_datas.datas.concat(metrics_datas.tmpdatas);
         metrics_datas.tmpdatas = [];
         process_sending = true;
 
