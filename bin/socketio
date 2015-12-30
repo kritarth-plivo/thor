@@ -57,6 +57,7 @@ var cluster = require('cluster')
   , connections = 0
   , close_connections = 0
   , error_connections = 0
+  , connect_error_connections = 0
   , received = 0
   , robin = []
   , workers = Math.min(cli.amount * cli.args.length, workers)
@@ -125,6 +126,10 @@ Object.keys(cluster.workers).forEach(function each(id) {
         ++error_connections;
         break;
 
+      case 'connect_error':
+        ++connect_error_connections;
+        break;
+
       case 'message':
         received++;
         metrics.message(data);
@@ -163,6 +168,7 @@ function live() {
       'Active '.white + active.toString().green,
       'Close '.white + close_connections.toString().green,
       'Error '.white + error_connections.toString().green,
+      'Connect_Error '.white + connect_error_connections.toString().green,
       'Received '.white + received.toString().green,
       '@'.white + new Date().toLocaleString().green
     ].join(', '));

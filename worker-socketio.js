@@ -147,6 +147,7 @@ process.on('message', function message(task) {
   // catch ECONNREFUSED
   socket.io.on('connect_error', function connect_error(err){
     process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
+    process_send({ type: 'connect_error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
     socket.disconnect('error', err);
     // socket.emit('disconnect', 'error', err);
