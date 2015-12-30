@@ -57,6 +57,7 @@ var cluster = require('cluster')
   , connections = 0
   , close_connections = 0
   , error_connections = 0
+  , socket_error_connections = 0
   , connect_error_connections = 0
   , received = 0
   , robin = []
@@ -126,6 +127,10 @@ Object.keys(cluster.workers).forEach(function each(id) {
         ++error_connections;
         break;
 
+      case 'socket_error':
+        ++socket_error_connections;
+        break;
+
       case 'connect_error':
         ++connect_error_connections;
         break;
@@ -168,6 +173,7 @@ function live() {
       'Active '.white + active.toString().green,
       'Close '.white + close_connections.toString().green,
       'Error '.white + error_connections.toString().green,
+      'Socket_Error '.white + socket_error_connections.toString().green,
       'Connect_Error '.white + connect_error_connections.toString().green,
       'Received '.white + received.toString().green,
       '@'.white + new Date().toLocaleString().green

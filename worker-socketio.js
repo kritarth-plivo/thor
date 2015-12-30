@@ -137,6 +137,7 @@ process.on('message', function message(task) {
 
   socket.on('error', function error(err) {
     process_send({ type: 'error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
+    process_send({ type: 'socket_error', message: err.description ? err.description.message : (err.message?err.message:err), id: task.id, wid: process.pid }, task);
 
     socket.disconnect('error', err);
     // socket.emit('disconnect', 'error', err);
