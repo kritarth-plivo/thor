@@ -161,6 +161,7 @@ function live() {
     console.log('\r'+ frames[i++ % len] +' Progress :: '.white + [
       'Created '.white + connections.toString().green,
       'Active '.white + active.toString().green,
+      'Close '.white + close_connections.toString().green,
       'Error '.white + error_connections.toString().green,
       'Received '.white + received.toString().green,
       '@'.white + new Date().toLocaleString().green
