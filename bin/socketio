@@ -14,11 +14,11 @@ var cli = require('commander');
 
 cli.usage(['[options] urls',
     ,'         urls like'
-    ,'         http://localhost:8080/'
-    ,'         http://localhost:8080/?params'
-    ,'         http://localhost:8080/?params@@192.168.102.53'].join("\n"))
-   .option('-A, --amount <connections>', 'the amount of persistent connections to generate, default 10000', parseInt, 10000)
-   .option('-C, --concurrent [connections]', '[deprecated]how many concurrent-connections per second, default 0', parseInt, 0)
+    ,'         http://ip:port/?params'
+    ,'         http://ip:port/?params1  http://ip:port/?params2  ...'
+    ,'         http://ip:port/?params@@192.168.102.53  --bind vip'].join("\n"))
+   .option('-A, --amount <connections>', 'the amount of persistent connections to generate, default 1', parseInt, 1)
+   .option('-C, --concurrent [connections]', '[deprecated]how many concurrent-connections per second, default to amount', parseInt, 0)
    .option('-M, --messages [messages]', 'number of messages to be send per connection, default 0', parseInt, 0)
    .option('-P, --protocol [protocol]', 'WebSocket protocol version, default 13', parseInt, 13)
    .option('-B, --buffer [size]', 'size of the messages that are send, default 1024', parseInt, 1024)
@@ -41,7 +41,9 @@ cli.usage(['[options] urls',
 // should bail out
 //
 if (!cli.args.length) return [
-    '愚かな人類よ! You forgot to supply the urls. Type -h for help.'
+    '愚かな人類よ!'
+  , 'You forgot to supply the urls.'
+  , 'Type -h for help.'
 ].forEach(function stderr(line) {
   console.error(line);
 });
@@ -51,19 +53,17 @@ if (!cli.args.length) return [
 //
 var cluster = require('cluster')
   , workers = cli.workers || 1
-  , ids = Object.create(null)
-  , concurrents = Object.create(null)
-  , concurrent_timestamps = Object.create(null)
-  , connections = 0
-  , close_connections = 0
-  , error_connections = 0
-  , socket_error_connections = 0
-  , connect_error_connections = 0
-  , received = 0
-  , robin = []
   , workers = Math.min(cli.amount * cli.args.length, workers)
-  , forked_workers = workers;
+  , forked_workers = workers
+  , robin = []
+  , task_ids = Object.create(null)
+  , concurrents = Object.create(null)
+  , created_connections = 0
+  , closed_connections = 0
+  , error_connections = 0
+  , message_received = 0;
 
+// master config
 cluster.setupMaster({
     exec: path.resolve(__dirname, '../worker-socketio.js')
   , silent: false
@@ -79,73 +79,61 @@ cluster.setupMaster({
     ]
 });
 
+// fork workder
 while (workers--) cluster.fork();
 
+// worker events setup & master exit event setup
 Object.keys(cluster.workers).forEach(function each(id) {
   var worker = cluster.workers[id];
   /**
    * message from worker via IPC
-   * @param  {Array|Object}  data) Array of Object or Object{id:connection_id, wid:worker_id, ...}
+   * @param  {Array|Object}  Object{wid:worker_id, concurrent:, datas:[{type:, id:connection_id, ...}, ...]}
    * @return null
    */
-  worker.on('message', function message(data) {
-  
-  var datas = [];
-  if (data.collection) {
-    datas = data.datas;
-  }else{
-    datas = [data];
-  }
-  for (var i = 0; i < datas.length; i++) {
-    var data = datas[i];
-    if ('concurrent' in data && 'cur_time' in data) {
-      if (!concurrent_timestamps[data.wid] || concurrent_timestamps[data.wid] < data.cur_time) {
-        concurrents[data.wid] = data.concurrent;
+  worker.on('message', function message(msg) {
+    
+    // worker active connections
+    concurrents[msg.wid] = msg.concurrent;
+
+    for (var i = 0; i < msg.datas.length; i++) {
+      var data = msg.datas[i];
+
+      switch (data.type) {
+        case 'open':
+          ++created_connections;
+
+          metrics.handshaken(data);
+          worker.emit('open::'+ data.id);
+          break;
+
+        case 'close':
+          ++closed_connections;
+
+          delete task_ids[data.id];
+
+          metrics.close(data);
+          break;
+
+        case 'error':
+          ++error_connections;
+
+          delete task_ids[data.id];
+
+          metrics.error(data);
+          break;
+
+        case 'message':
+          ++message_received;
+
+          metrics.message(data);
       }
+
     }
-
-    switch (data.type) {
-      case 'open':
-        metrics.handshaken(data);
-        worker.emit('open::'+ data.id);
-
-        // Output the connection progress
-        ++connections;
-        break;
-
-      case 'close':
-        delete ids[data.id];
-
-        metrics.close(data);
-        ++close_connections;
-        break;
-
-      case 'error':
-        delete ids[data.id];
-
-        metrics.error(data);
-        ++error_connections;
-        break;
-
-      case 'socket_error':
-        ++socket_error_connections;
-        break;
-
-      case 'connect_error':
-        ++connect_error_connections;
-        break;
-
-      case 'message':
-        received++;
-        metrics.message(data);
-    }
-
-  }
 
     //
     // Check if we have processed all connections so we can quit cleanly.
     //
-    if (!Object.keys(ids).length) process.exit();
+    if (!Object.keys(task_ids).length) process.exit();
   });
 
   // Add our worker to our round robin queue so we can balance all our requests
@@ -153,32 +141,34 @@ Object.keys(cluster.workers).forEach(function each(id) {
   robin.push(worker);
 });
 
+/**
+ * live tick
+ */
+function tick() {
+  var frames = live.frames
+    , len = frames.length
+    , i = 0;
+
+  var active = Object.keys(concurrents).reduce(function (count, id) {
+    return count + (concurrents[id] || 0);
+  }, 0);
+
+  // process.stdout.write('\r'+ frames[i++ % len] +' Progress :: '.white + [
+  console.log('\r'+ frames[i++ % len] +' Progress :: '.white + [
+    'Created '.white + created_connections.toString().green,
+    'Active '.white + active.toString().green,
+    'Closed '.white + closed_connections.toString().green,
+    'Error '.white + error_connections.toString().green,
+    'Message Received '.white + message_received.toString().green,
+    '@'.white + new Date().toLocaleString().green
+  ].join(', '));
+}
 //
 // Output live, real-time stats.
 //
 function live() {
-  var frames = live.frames
-    , len = frames.length
-    , interval = cli.statInterval * 1000
-    , i = 0;
-
-  live.interval = setInterval(function tick() {
-    var active = Object.keys(concurrents).reduce(function (count, id) {
-      return count + (concurrents[id] || 0);
-    }, 0);
-
-    // process.stdout.write('\r'+ frames[i++ % len] +' Progress :: '.white + [
-    console.log('\r'+ frames[i++ % len] +' Progress :: '.white + [
-      'Created '.white + connections.toString().green,
-      'Active '.white + active.toString().green,
-      'Close '.white + close_connections.toString().green,
-      'Error '.white + error_connections.toString().green,
-      'Socket_Error '.white + socket_error_connections.toString().green,
-      'Connect_Error '.white + connect_error_connections.toString().green,
-      'Received '.white + received.toString().green,
-      '@'.white + new Date().toLocaleString().green
-    ].join(', '));
-  }, interval);
+  var interval = cli.statInterval * 1000;
+  live.interval = setInterval(tick, interval);
 }
 
 /**
@@ -203,14 +193,14 @@ live.frames = [
  */
 live.stop = function stop() {
   // process.stdout.write('\u001b[2K');
-  console.log('');
   clearInterval(live.interval);
+  tick();
 };
 
 //
 // Up our WebSocket socket connections.
 //
-[
+console.log([
     ''
   , 'Thor:                                                  version: '+ cli._version
   , ''
@@ -221,9 +211,7 @@ live.stop = function stop() {
   , '- Create '+ (cli.concurrent || 'all the') + ' concurrent connections.'
   , '- Smash '+ (cli.amount || 'infinite') +' connections.'
   , ''
-].forEach(function stdout(line) {
-  console.log(line);
-});
+].join("\n"));
 
 //
 // Metrics collection.
@@ -234,13 +222,12 @@ var metrics = new Metrics(cli.amount * cli.args.length);
 // is helpfull if you are testing multiple loadbalancer endpoints for example.
 async.forEach(cli.args, function forEach(url, done) {
   var i = cli.amount
-    , completed = 0
-    , goOnTaskQueueWhenConcurrentLimited = (cli.concurrent && cli.concurrent < cli.amount);
+    , goOnTaskQueueWhileConcurrentLimited = (cli.concurrent && cli.concurrent < cli.amount);
 
   console.log('Connecting to %s @%s', url, new Date().toLocaleString());
 
   url = url.split('@@');
-  var localaddr = url.length > 1 ? url[1] : null;
+  var vip = url.length > 1 ? url[1] : null;
   url = url[0];
   //
   // Create a simple WebSocket connection generator.
@@ -250,20 +237,20 @@ async.forEach(cli.args, function forEach(url, done) {
 
     // Register the id, so we can keep track of the connections that we still
     // need to process.
-    ids[id] = 1;
+    task_ids[id] = 1;
 
     // Process the connections
     worker.send({ url: url, size: cli.buffer, messages: cli.messages, id: id
-      , localaddr: localaddr
+      , localaddr: vip
       , transport: cli.transport.split(',')
       , pingInterval: cli.pingInterval
-      , nextTask: goOnTaskQueueWhenConcurrentLimited
+      , nextTask: goOnTaskQueueWhileConcurrentLimited
       , runtime: cli.runtime
       , connectTimeout: cli.connectTimeout
     });
 
     // do it if cuncurrent is not 0 and smaller than the amount of all tcp connections
-    if (goOnTaskQueueWhenConcurrentLimited) {
+    if (goOnTaskQueueWhileConcurrentLimited) {
       worker.once('open::'+ id, fn);
     };
 
@@ -275,7 +262,7 @@ async.forEach(cli.args, function forEach(url, done) {
   queue.drain = done;
 
   // Add all connections to the processing queue;
-  while (i--) queue.push(url + (localaddr ? '::'+localaddr : '') +'::'+ i);
+  while (i--) queue.push(url + (vip ? '::'+vip : '') +'::'+ i);
 }, function established(err) {
   metrics.established();
 });
