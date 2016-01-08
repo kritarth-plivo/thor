@@ -16,7 +16,11 @@ cli.usage(['[options] urls',
     ,'         urls like'
     ,'         http://ip:port/?params'
     ,'         http://ip:port/?params1  http://ip:port/?params2  ...'
-    ,'         http://ip:port/?params@@192.168.102.53  --bind vip'].join("\n"))
+    ,'         http://ip:port/?params@@192.168.102.53  --bind vip'
+    ,''
+    ,'  system variable NODE_ON_MESSAGE could be used for on("message", fun) event name from server,'
+    ,'  like "onData" event emit by server as client\'s "message" event, we should type:'
+    ,'  NODE_ON_MESSAGE=onData thor/bin/socketio [options] urls'].join("\n"))
    .option('-A, --amount <connections>', 'the amount of persistent connections to generate, default 1', parseInt, 1)
    .option('-C, --concurrent [connections]', '[deprecated]how many concurrent-connections per second, default to amount', parseInt, 0)
    .option('-M, --messages [messages]', 'number of messages to be send per connection, default 0', parseInt, 0)
