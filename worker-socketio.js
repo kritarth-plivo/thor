@@ -18,8 +18,8 @@ var masked = process.argv[4] === 'true'
   , protocol = +process.argv[3] || 13;
 
 // collect metics datas
-var metrics_datas = {collection:true, wid: process.pid, concurrent: 0, datas:[], tmpdatas:[]}
-  , metrics_datas_sigleton = metrics_datas
+var metrics_datas_template = {collection:true, wid: process.pid, concurrent: 0, datas:[], tmpdatas:[]}
+  , metrics_datas = JSON.parse(JSON.stringify(metrics_datas_template))
   , statInterval = +process.argv[6] || 60
   , logError = +process.argv[7] || 0
   , process_sending = false
@@ -35,6 +35,7 @@ var metrics_datas = {collection:true, wid: process.pid, concurrent: 0, datas:[],
         if(!process_sending){
           process_sending = true;
           
+          var metrics_datas_sigleton = JSON.parse(JSON.stringify(metrics_datas_template));
           metrics_datas_sigleton.datas = [data];
           metrics_datas_sigleton.concurrent = concurrent;
           process.send(data, null, function sended(err){
