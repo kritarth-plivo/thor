@@ -209,7 +209,7 @@ console.log([
   , 'Thou shall:'
   , '- Spawn '+ forked_workers +' workers.'
   , '- Create '+ (cli.concurrent || 'all the') + ' concurrent connections.'
-  , '- Smash '+ (cli.amount || 'infinite') +' connections.'
+  , '- Smash '+ (cli.amount ? cli.amount * cli.args.length : 'infinite') +' connections.'
   , ''
 ].join("\n"));
 
