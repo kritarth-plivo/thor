@@ -211,7 +211,8 @@ process.on('message', function message(task) {
    */
   socket.on('connect', function open() {
     process_send({ type: 'open', duration: Date.now() - start_timestamp, id: task.id }, task);
-    write(socket, task, task.id);
+    // server will not able to parse the msg format
+    // write(socket, task, task.id);
 
     // As the `close` event is fired after the internal `_socket` is cleaned up
     // we need to do some hacky shit in order to tack the bytes send.
