@@ -229,6 +229,7 @@ process.on('message', function message(task) {
     }, task);
 
     // Only write as long as we are allowed to send messages
+    if (task.messages > 0)
     if (--task.messages) {
       write(socket, task, task.id);
     } else {
