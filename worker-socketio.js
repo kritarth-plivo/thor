@@ -2,13 +2,9 @@
 
 var Socket = require('socket.io-client')
   , connections = {}
+  , disconnectings = {}
   , concurrent = 0
   , tasks = {};
-
-//
-// Get the session document that is used to generate the data.
-//
-var session = require(process.argv[2]);
 
 //
 // WebSocket connection details.
@@ -92,7 +88,30 @@ var metrics_datas_template = {collection:true, wid: process.pid, concurrent: 0, 
     }
   , process_exit = function(exit){
     if (exit) {
-        process.exit();
+        var check_exit_timer = setInterval(function(){
+          var tmp_ids = [];
+          // check each status
+          Object.keys(disconnectings).forEach(function write(id) {
+            if(disconnectings[id].disconnected == true) {
+              tmp_ids.push(id);
+            }
+          });
+
+          // delete disconnected status object
+          for (var i = tmp_ids.length - 1; i >= 0; i--) {
+            delete disconnectings[tmp_ids[i]];
+          }
+
+          if (Object.keys(disconnectings).length <= 0) {
+            process.exit();
+          }
+        }, 5000);
+
+        // timeout to exit
+        setTimeout(function(){
+          clearInterval(check_exit_timer);
+          process.exit();
+        }, 60000);
     }
   }
   /**
@@ -114,20 +133,16 @@ var metrics_datas_template = {collection:true, wid: process.pid, concurrent: 0, 
    * @param  {Socket} socket 
    * @param  {object} task   message from master for creating a socket connection
    * @param  {mixed} msg    message from emitter for closing socket
+   * @param  {object} err   error object/data if msg=='error'
    */
-  , socketClose = function (socket, task, msg) {
+  , socketClose = function (socket, task, msg, err) {
     // close once only
-    if (!connections[task.id]) {
+    if (!connections[task.id] || !msg) {
       return;
     }
 
     --concurrent;
-    var err_pos = 3
-      , err = msg=='error' && arguments.length > err_pos ? Array.prototype.slice.call(arguments, err_pos, err_pos + 1).pop() : null;
-    if (err && logError) {
-      console.error(err);
-    }
-
+    
     var internal = {};
     try{
       internal = socket.io.engine.transport.ws._socket || {};
@@ -141,7 +156,21 @@ var metrics_datas_template = {collection:true, wid: process.pid, concurrent: 0, 
       send: internal.bytesWritten || 0
     }, task);
 
+    if (!socket.disconnected) disconnectings[task.id] = socket;
     delete connections[task.id];
+
+    switch (msg) {
+      case 'close':
+        socket.disconnect();
+        break;
+
+      case 'error':
+        if (err && logError) {
+          console.error(err);
+        }
+        break;
+    }
+
     checkConnectionLength();
   }
   /**
@@ -185,7 +214,7 @@ process.on('message', function message(task) {
   //
   if (task.shutdown) {
     Object.keys(connections).forEach(function shutdown(id) {
-      connections[id] && socketClose(connections[id], tasks[id]);
+      connections[id] && socketClose(connections[id], tasks[id], 'close');
     });
   }
 
@@ -213,7 +242,7 @@ process.on('message', function message(task) {
   socket.on('connect', function open() {
     process_send({ type: 'open', duration: Date.now() - start_timestamp, id: task.id }, task);
     // server will not able to parse the msg format
-    // write(socket, task, task.id);
+    if (task.messages > 0) write(socket, task, task.id);
 
     // As the `close` event is fired after the internal `_socket` is cleaned up
     // we need to do some hacky shit in order to tack the bytes send.
@@ -233,15 +262,15 @@ process.on('message', function message(task) {
     if (--task.messages) {
       write(socket, task, task.id);
     } else {
-      socketClose(socket, task);
+      socketClose(socket, task, 'close');
     }
   });
 
   /**
    * listen to disconnecting event
    */
-  socket.on('disconnect', function close(msg){
-    socketClose(socket, task, msg);
+  socket.on('disconnect', function close(){
+    socketClose(socket, task, 'close');
   });
 
   /**
@@ -266,7 +295,7 @@ process.on('message', function message(task) {
   // timeout to close socket
   if (task.runtime && task.runtime > 0) {
     setTimeout(function timeoutToCloseSocket(id, socket) {
-      socketClose(socket, task);
+      socketClose(socket, task, 'close');
     }, task.runtime * 1000, task.id, socket);
   }
 });
@@ -287,12 +316,10 @@ process.on('exit', function () {
  * @api private
  */
 function write(socket, task, id, fn, data) {
-  // i thank the generator doesn't make any sense, but just let me do some change and leave it alone
-  session[binary ? 'binary' : 'utf8'](data || task.size, function message(err, data) {
-    var start = socket.last = Date.now();
-
-    socket.send(data, {
-      binary: binary,
+  socket.last = Date.now();
+  var sock_data = data || 'This is Thor, No. ' + process.pid + '-' + (id || task.id);
+  socket.send(sock_data, {
+      binary: !!data || binary,
       mask: masked
     }, function sending(err) {
       if (err) {
@@ -301,5 +328,4 @@ function write(socket, task, id, fn, data) {
 
       if (fn) fn(err);
     });
-  });
 }

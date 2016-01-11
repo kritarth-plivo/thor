@@ -27,7 +27,6 @@ cli.usage(['[options] urls',
    .option('-P, --protocol [protocol]', 'WebSocket protocol version, default 13', parseInt, 13)
    .option('-B, --buffer [size]', 'size of the messages that are send, default 1024', parseInt, 1024)
    .option('-W, --workers [cpus]', 'workers to be spawned, default cpus.length', parseInt, os.cpus().length)
-   .option('-G, --generator [file]', 'custom message generators')
    .option('-M, --masked', 'send the messaged with a mask')
    .option('-b, --binary', 'send binary messages instead of utf-8')
    .option('-t, --connectTimeout [connectTimeout]', 'default 5(s)', parseInt, 5)
@@ -72,9 +71,7 @@ cluster.setupMaster({
     exec: path.resolve(__dirname, '../worker-socketio.js')
   , silent: false
   , args: [
-      cli.generator
-      ? path.resolve(process.cwd(), cli.generator)
-      : path.resolve(__dirname, '../generator.js'),
+      null,
       cli.protocol,
       !!cli.masked,
       !!cli.binary,
