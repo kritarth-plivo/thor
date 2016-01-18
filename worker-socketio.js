@@ -26,7 +26,7 @@ var metrics_datas_template = {collection:true, wid: process.pid, concurrent: 0, 
    */
   , process_send = function(data, task) {
       // immediate statistic or run callback on open
-      if (statInterval <= 0 || ('open' == data.type && task.nextTask)) {
+      if (statInterval <= 0) {
         // lower ipc counter
         if(!process_sending){
           process_sending = true;
