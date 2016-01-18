@@ -154,6 +154,7 @@ function tick() {
     return count + (concurrents[id] || 0);
   }, 0);
 
+  process.stdout.write('');
   // process.stdout.write('\r'+ frames[i++ % len] +' Progress :: '.white + [
   console.log('\r'+ frames[i++ % len] +' Progress :: '.white + [
     'Created '.white + created_connections.toString().green,
@@ -163,6 +164,15 @@ function tick() {
     'Message Received '.white + message_received.toString().green,
     '@'.white + new Date().toLocaleString().green
   ].join(', '));
+
+  if (!metrics.failures) {
+    return;
+  }
+  var process_stdout_write = [];
+  Object.keys(metrics.errors).forEach(function error(err) {
+      process_stdout_write.push(err + ' x ' + this.errors[err]);
+    }, metrics);
+  process.stdout.write('\r'+ frames[i++ % len] +' Errors :: '.white+"" + process_stdout_write.join(", "));
 }
 //
 // Output live, real-time stats.
@@ -193,7 +203,7 @@ live.frames = [
  * @api private
  */
 live.stop = function stop() {
-  // process.stdout.write('\u001b[2K');
+  process.stdout.write('\u001b[2K');
   clearInterval(live.interval);
   tick();
 };
