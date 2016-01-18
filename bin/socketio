@@ -22,7 +22,7 @@ cli.usage(['[options] urls',
     ,'  like "onData" event emit by server as client\'s "message" event, we should type:'
     ,'  NODE_ON_MESSAGE=onData thor/bin/socketio [options] urls'].join("\n"))
    .option('-A, --amount <connections>', 'the amount of persistent connections to generate, default 1', parseInt, 1)
-   .option('-C, --concurrent [connections]', '[deprecated]how many concurrent-connections per second, default to amount', parseInt, 0)
+   .option('-C, --concurrent [connections]', 'how many concurrent-connections per second, default to amount', parseInt, 0)
    .option('-M, --messages [messages]', 'number of messages to be send per connection, default 0', parseInt, 0)
    .option('-P, --protocol [protocol]', 'WebSocket protocol version, default 13', parseInt, 13)
    .option('-B, --buffer [size]', 'size of the messages that are send, default 1024', parseInt, 1024)
@@ -33,7 +33,7 @@ cli.usage(['[options] urls',
    .option('-l, --logError [logError]', 'default 0 means false, otherwise true', parseInt, 0)
    .option('--TP, --transport [transport]', '"polling"/"websocket" default websocket', 'websocket')
    .option('--PI, --pingInterval [seconds]', 'seconds for doing ping to keep-alive, default 50', parseInt, 50)
-   .option('--SI, --statInterval [seconds]', 'show stat info interval, default 60', parseInt, 60)
+   .option('--SI, --statInterval [seconds]', 'interval to show stat info & trigger thelimited  concurrent queue, default 60', parseInt, 60)
    .option('--RT, --runtime [seconds]', 'timeout to close socket(seconds), default to unlimited, u must stop by ctrl+c', parseInt, -1)
    .version(require('../package.json').version)
    .parse(process.argv);
@@ -64,7 +64,8 @@ var cluster = require('cluster')
   , created_connections = 0
   , closed_connections = 0
   , error_connections = 0
-  , message_received = 0;
+  , message_received = 0
+  , goOnTaskQueueWhileConcurrentLimited = (cli.concurrent && cli.concurrent < cli.amount);
 
 // master config
 cluster.setupMaster({
@@ -232,8 +233,7 @@ var metrics = new Metrics(cli.amount * cli.args.length);
 // Iterate over all the urls so we can target multiple locations at once, which
 // is helpfull if you are testing multiple loadbalancer endpoints for example.
 async.forEach(cli.args, function forEach(url, done) {
-  var i = cli.amount
-    , goOnTaskQueueWhileConcurrentLimited = (cli.concurrent && cli.concurrent < cli.amount);
+  var i = cli.amount;
 
   console.log('Connecting to %s @%s', url, new Date().toLocaleString());
 
