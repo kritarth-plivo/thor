@@ -17,6 +17,8 @@ cli.usage(['[options] urls',
     ,'         http://ip:port/?params'
     ,'         http://ip:port/?params1  http://ip:port/?params2  ...'
     ,'         http://ip:port/?params@@192.168.102.53  --bind vip'
+    ,'  the advanced usage of url could be make by an script expression like that:'
+    ,'         "<script>\'http://127.0.0.1/?\'+Math.random()</script>"'
     ,''
     ,'  system variable NODE_ON_MESSAGE could be used for on("message", fun) event name from server,'
     ,'  like "onData" event emit by server as client\'s "message" event, we should type:'
@@ -234,6 +236,10 @@ var metrics = new Metrics(cli.amount * cli.args.length);
 // is helpfull if you are testing multiple loadbalancer endpoints for example.
 async.forEach(cli.args, function forEach(url, done) {
   var i = cli.amount;
+
+  if (url.match(/^<script>.+?<\/script>$/)) {
+    url = eval(url.replace('<script>', '').replace('<\/script>', ''));
+  }
 
   console.log('Connecting to %s @%s', url, new Date().toLocaleString());
 
