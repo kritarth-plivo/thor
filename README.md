@@ -17,7 +17,8 @@ Once you have Node.js installed, you can use the bundled package manager `npm` t
 install this module:
 
 ```
-npm install -g git://github.com/iorichina/thor.git
+nvm use 8.0.0
+npm install -g git://github.com/kritarth-plivo/thor.git
 ```
 
 The `-g` command flag tells `npm` to install the module globally on your system.
