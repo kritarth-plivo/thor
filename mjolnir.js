@@ -74,8 +74,9 @@ process.on('message', function message(task) {
   // End of the line, we are gonna start generating new connections.
   if (!task.url) return;
 
-  var socket = new Socket(task.url, {
+  var socket = new Socket(task.url, 'sip', {
     protocolVersion: protocol,
+    origin: 'https://kritarth.net',
     localAddress: task.localaddr || null
   });
   socket.last = Date.now();
